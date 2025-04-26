@@ -4,7 +4,7 @@
 	import ThemeSettings from '$lib/components/ui/theme-settings.svelte';
 	import { setContext } from 'svelte';
 	import { writable } from 'svelte/store';
-	import { Settings, Github } from 'lucide-svelte';
+	import { Settings, Github, HeartHandshake } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as PopoverPrimitive from '$lib/components/ui/popover';
 	let { children } = $props();
@@ -57,12 +57,16 @@
 				Built with <a href="https://kit.svelte.dev" target="_blank" rel="noopener noreferrer" class="font-medium underline underline-offset-4">SvelteKit</a>,
 				<a href="https://tailwindcss.com" target="_blank" rel="noopener noreferrer" class="font-medium underline underline-offset-4">Tailwind</a>, and
 				<a href="https://github.com/patorjk/figlet.js" target="_blank" rel="noopener noreferrer" class="font-medium underline underline-offset-4">figlet.js</a>
-				<a href="https://github.com/ThatPlatypus/SvelteTaag" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="float-right">
+			</p>
+			<div class="flex items-center space-x-1">
+				<span class="text-sm text-muted-foreground">Open Source</span>
+				<HeartHandshake size={16} class="text-primary" />
+				<a href="https://github.com/ThatPlatypus/SvelteTaag" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
 					<Button variant="ghost" size="icon">
 						<Github size={20} />
 					</Button>
 				</a>
-			</p>
+			</div>
 		</div>
 	</footer>
 </div>
