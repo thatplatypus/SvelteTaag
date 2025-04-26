@@ -4,6 +4,7 @@
 	import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select';
 	import { animate, stagger } from 'motion';
 	import figlet from 'figlet';
+	type Selected = string | number | undefined;
 
 	let text = 'Type Something';
 	let font = 'Standard';
@@ -156,7 +157,6 @@
 			localStorage.setItem('recentFonts', JSON.stringify(recentFonts));
 		}
 		
-		// Always reload the selected font to ensure it's available
 		loadFont(font)
 			.then(() => {
 				try {
@@ -245,34 +245,24 @@
 		text = (e.target as HTMLInputElement).value;
 	}
 
-	function handleFontChange(value: string) {
-		fontChangeCount++;
-		const message = `Font selected/changed to: ${value} (change #${fontChangeCount})`;
-		console.log(message);
-		debugMessages = [...debugMessages, message];
-		font = value;
+	function handleFontChange(selected: Selected) {
+		if (selected !== undefined) {
+			fontChangeCount++;
+			const message = `Font selected/changed to: ${selected} (change #${fontChangeCount})`;
+			console.log(message);
+			debugMessages = [...debugMessages, message];
+			font = selected.toString();
+		}
 	}
 
-	function handleLayoutChange(value: string) {
-		const message = `Layout selected: ${value}`;
-		console.log(message);
-		debugMessages = [...debugMessages, message];
-		horizontalLayout = value;
-		localStorage.setItem('preferredLayout', horizontalLayout);
-	}
-	
-	function handleSelectValueChange(event: CustomEvent<string>) {
-		const message = `Select value changed to: ${event.detail}`;
-		console.log(message);
-		debugMessages = [...debugMessages, message];
-		handleFontChange(event.detail);
-	}
-	
-	function handleLayoutValueChange(event: CustomEvent<string>) {
-		const message = `Layout value changed to: ${event.detail}`;
-		console.log(message);
-		debugMessages = [...debugMessages, message];
-		handleLayoutChange(event.detail);
+	function handleLayoutChange(selected: Selected) {
+		if (selected !== undefined) {
+			const message = `Layout selected: ${selected}`;
+			console.log(message);
+			debugMessages = [...debugMessages, message];
+			horizontalLayout = selected.toString();
+			localStorage.setItem('preferredLayout', horizontalLayout);
+		}
 	}
 	
 	function resetFontToStandard() {
@@ -311,49 +301,62 @@
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 			<div>
 				<label class="block text-sm font-medium mb-2">Font</label>
-				<div class="flex gap-2">
-					<select 
-						bind:value={font}
-						class="w-full p-2 border rounded-md bg-background"
+				<Select onSelectedChange={handleFontChange}>
+					<SelectTrigger class="w-full">
+						<SelectValue placeholder="Select a font">
+							{font}
+						</SelectValue>
+					</SelectTrigger>
+					<SelectContent 
+						class="max-h-[400px] overflow-y-auto"
+						sideOffset={4}
 					>
 						{#if favoriteFont}
-							<optgroup label="Favorite">
-								<option value={favoriteFont}>{favoriteFont}</option>
-							</optgroup>
+							<div class="p-2 border-b">
+								<h3 class="text-sm font-semibold mb-2">Favorite</h3>
+								<SelectItem value={favoriteFont}>{favoriteFont}</SelectItem>
+							</div>
 						{/if}
 						
 						{#if recentFonts.length > 0}
-							<optgroup label="Recent">
+							<div class="p-2 border-b">
+								<h3 class="text-sm font-semibold mb-2">Recent</h3>
 								{#each recentFonts as recentFont}
-									<option value={recentFont}>{recentFont}</option>
+									<SelectItem value={recentFont}>{recentFont}</SelectItem>
 								{/each}
-							</optgroup>
+							</div>
 						{/if}
 						
-						<optgroup label="Popular">
+						<div class="p-2 border-b">
+							<h3 class="text-sm font-semibold mb-2">Popular</h3>
 							{#each popularFonts as popularFont}
-								<option value={popularFont}>{popularFont}</option>
+								<SelectItem value={popularFont}>{popularFont}</SelectItem>
 							{/each}
-						</optgroup>
+						</div>
 						
-						<optgroup label="All Fonts">
+						<div class="p-2">
+							<h3 class="text-sm font-semibold mb-2">All Fonts</h3>
 							{#each fonts as fontName}
-								<option value={fontName}>{fontName}</option>
+								<SelectItem value={fontName}>{fontName}</SelectItem>
 							{/each}
-						</optgroup>
-					</select>
-				</div>
+						</div>
+					</SelectContent>
+				</Select>
 			</div>
 			<div>
 				<label class="block text-sm font-medium mb-2">Kerning Style</label>
-				<select 
-					bind:value={horizontalLayout}
-					class="w-full p-2 border rounded-md bg-background"
-				>
-					{#each layoutOptions as option}
-						<option value={option.value}>{option.label}</option>
-					{/each}
-				</select>
+				<Select onSelectedChange={handleLayoutChange}>
+					<SelectTrigger class="w-full">
+						<SelectValue placeholder="Select a style">
+							{horizontalLayout}
+						</SelectValue>
+					</SelectTrigger>
+					<SelectContent>
+						{#each layoutOptions as option}
+							<SelectItem value={option.value}>{option.label}</SelectItem>
+						{/each}
+					</SelectContent>
+				</Select>
 			</div>
 		</div>
 		
