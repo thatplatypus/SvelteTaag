@@ -4,7 +4,10 @@ A sleek, modern Text to ASCII Art Generator built with SvelteKit, TailwindCSS, S
 
 ## Live Demo
 
-[View the live demo on GitHub Pages](#) (Link will be available after deployment)
+[View the live demo on GitHub Pages](https://thatplatypus.github.io/SvelteTaag/) 
+
+![image](https://github.com/user-attachments/assets/dfb0f0b6-5ce8-468c-983a-d2f69bc53da4)
+
 
 ## Features
 
