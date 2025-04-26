@@ -1,4 +1,3 @@
-// Define the Web Share API types
 interface ShareData {
   title?: string;
   text?: string;
@@ -11,5 +10,4 @@ interface NavigatorShare {
   canShare?(data?: ShareData): boolean;
 }
 
-// Add share methods to the Navigator interface
 interface Navigator extends NavigatorShare {} 
