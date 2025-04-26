@@ -4,42 +4,35 @@
     
     export let accentColor: AccentColor = 'default';
     
-    // Number of matrix streams to create - increase for more density
     const numberOfStreams = 60;
     
     let streamElements: {left: string, top: string, big: boolean, delay: boolean}[] = [];
     
-    // Map accent colors to CSS variables
     const accentColorMap: Record<AccentColor, string> = {
-        'default': '#0ea5e9', // sky blue
+        'default': '#0ea5e9', 
         'purple': '#8b5cf6',
-        'green': '#00ff00', // bright green for matrix
+        'green': '#00ff00', 
         'orange': '#f97316',
         'red': '#ef4444',
         'pink': '#ec4899'
     };
     
-    // Generate random left positions
     function getRandomLeft(): string {
         const leftPositions = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
         const randomIndex = Math.floor(Math.random() * leftPositions.length);
         return `l${leftPositions[randomIndex]}`;
     }
     
-    // Generate random top starting positions
     function getRandomTop(): string {
         const topValues = [200, 500, 180, 700, 800, 900, 300, 400, 250, 320, 190, 520, 380, 600, 650, 290, 530, 420, 310];
         const randomIndex = Math.floor(Math.random() * topValues.length);
         return `t${topValues[randomIndex]}`;
     }
     
-    // Initialize the streams with random positions
     function initializeStreams() {
         streamElements = [];
         for (let i = 0; i < numberOfStreams; i++) {
-            // Decide if this stream should be "big"
             const isBig = Math.random() > 0.7;
-            // Decide if this stream should have a delay
             const hasDelay = Math.random() > 0.5;
             
             streamElements.push({
@@ -52,7 +45,6 @@
         console.log(`Created ${streamElements.length} matrix streams`);
     }
     
-    // Handler for matrix-enabled events
     function handleMatrixEnabled() {
         console.log('Matrix effect enabled or refreshed');
         initializeStreams();
@@ -62,10 +54,8 @@
         console.log('Matrix component mounted');
         initializeStreams();
         
-        // Listen for matrix-enabled events
         window.addEventListener('matrix-enabled', handleMatrixEnabled);
         
-        // Listen for resize events to adjust number of streams if needed
         const handleResize = () => {
             console.log('Window resized, refreshing matrix');
             initializeStreams();
@@ -79,14 +69,12 @@
         };
     });
     
-    // When accent color changes, force a small delay to allow CSS to update
     $: if (accentColor) {
         console.log('Matrix accent color changed to:', accentColor);
     }
 </script>
 
 <style>
-    /* Create falling letter animation using standard CSS animations */
     .matrix-container {
         position: fixed;
         top: 0;
@@ -99,7 +87,6 @@
         pointer-events: none;
     }
 
-    /* Left position classes */
     .l0 { left: 0%; }
     .l5 { left: 5%; }
     .l10 { left: 10%; }
@@ -122,7 +109,6 @@
     .l95 { left: 95%; }
     .l100 { left: calc(100% - 20px); }
 
-    /* Top position classes */
     .t200 { top: -400px; }
     .t500 { top: -500px; }
     .t180 { top: -680px; }

@@ -3,7 +3,7 @@
     import { Label } from '$lib/components/ui/label';
     import * as RadioGroupPrimitive from '$lib/components/ui/radio-group';
     import type { ThemeSettings, AccentColor, BackgroundStyle } from '$lib/types';
-    import { Separator } from "$lib/components/ui/separator";    // Get theme stores from context
+    import { Separator } from "$lib/components/ui/separator";    
     const { accentColor, backgroundStyle } = getContext<ThemeSettings>('themeSettings');
     
     let accentColorValue: AccentColor = 'default';
