@@ -1,21 +1,29 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, getContext } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select';
-	import { Settings } from 'lucide-svelte';
 	import { animate, stagger } from 'motion';
 	import figlet from 'figlet';
 	import { Label } from '$lib/components/ui/label';
-	import * as PopoverPrimitive from '$lib/components/ui/popover';
 	import * as RadioGroupPrimitive from '$lib/components/ui/radio-group';
 	
-	// Define a proper type for the Selected value
-	type Selected = string | number;
+	const { accentColor, backgroundStyle } = getContext('themeSettings');
 	
-	// For ShadCN Select component
-	interface SelectChangeValue<T> {
-		value: T;
-	}
+	let accentColorValue = 'default';
+	let backgroundStyleValue = 'default';
+	
+	accentColor.subscribe(value => {
+		accentColorValue = value;
+	});
+	
+	backgroundStyle.subscribe(value => {
+		backgroundStyleValue = value;
+		if (value === 'matrix') {
+			setTimeout(() => {
+				initMatrixEffect();
+			}, 100);
+		}
+	});
 
 	let text = 'Type Something';
 	let font = 'Standard';
@@ -32,10 +40,6 @@
 	let currentFont = ''; // Track current font for debugging
 	let fontChangeCount = 0; // Track how many times the font has been changed
 	let debugMessages: string[] = [];
-	
-	// Theme settings
-	let accentColor = 'default'; // default, purple, blue, green, orange, red
-	let backgroundStyle = 'default'; // default, gradient, matrix
 	
 	const accentColors = [
 		{ value: 'default', label: 'Default (Blue)' },
@@ -83,23 +87,17 @@
 			}
 		}
 		
-		// Load saved theme settings
-		const savedAccentColor = localStorage.getItem('accentColor');
-		if (savedAccentColor) {
-			accentColor = savedAccentColor;
+		if (backgroundStyleValue === 'matrix') {
+			initMatrixEffect();
 		}
 		
-		const savedBackgroundStyle = localStorage.getItem('backgroundStyle');
-		if (savedBackgroundStyle) {
-			backgroundStyle = savedBackgroundStyle;
-			if (backgroundStyle === 'matrix') {
-				setTimeout(() => {
-					initMatrixEffect();
-				}, 100);
-			}
-		}
+		window.addEventListener('matrix-enabled', initMatrixEffect);
 		
 		loadInitialFonts();
+		
+		return () => {
+			window.removeEventListener('matrix-enabled', initMatrixEffect);
+		};
 	});
 
 	function loadInitialFonts() {
@@ -322,16 +320,16 @@
 	}
 	
 	function updateAccentColor(value: string) {
-		accentColor = value;
-		localStorage.setItem('accentColor', accentColor);
+		accentColor.set(value);
+		localStorage.setItem('accentColor', value);
 	}
 	
 	function updateBackgroundStyle(value: string) {
-		const oldValue = backgroundStyle;
-		backgroundStyle = value;
-		localStorage.setItem('backgroundStyle', backgroundStyle);
+		const oldValue = backgroundStyleValue;
+		backgroundStyle.set(value);
+		localStorage.setItem('backgroundStyle', value);
 		
-		if (backgroundStyle === 'matrix' && oldValue !== 'matrix') {
+		if (value === 'matrix' && oldValue !== 'matrix') {
 			setTimeout(() => {
 				initMatrixEffect();
 			}, 100);
@@ -352,7 +350,6 @@
 		const fontSize = 16;
 		const columns = Math.floor(canvas.width / fontSize);
 		
-		// Array to track positions of characters
 		const drops: number[] = [];
 		for (let i = 0; i < columns; i++) {
 			drops[i] = 1;
@@ -373,7 +370,7 @@
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
 			
 			// Set color based on current accent
-			ctx.fillStyle = accentColorMap[accentColor] || '#0ea5e9';
+			ctx.fillStyle = accentColorMap[accentColorValue] || '#0ea5e9';
 			ctx.font = `${fontSize}px monospace`;
 			
 			for (let i = 0; i < drops.length; i++) {
@@ -395,7 +392,7 @@
 	}
 	
 	function getAccentGradient() {
-		switch (accentColor) {
+		switch (accentColorValue) {
 			case 'purple':
 				return 'from-purple-600 to-indigo-600';
 			case 'green':
@@ -412,66 +409,23 @@
 	}
 </script>
 
-<div class="{backgroundStyle === 'gradient' ? 'bg-gradient-to-br ' + getAccentGradient() + ' min-h-screen text-white' : 'min-h-screen'}" class:matrix-container={backgroundStyle === 'matrix'}>
-	{#if backgroundStyle === 'matrix'}
+<div class="{backgroundStyleValue === 'gradient' ? 'bg-gradient-to-br ' + getAccentGradient() + ' min-h-screen text-white' : 'min-h-screen'}" class:matrix-container={backgroundStyleValue === 'matrix'}>
+	{#if backgroundStyleValue === 'matrix'}
 		<canvas id="matrix-bg" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
 	{/if}
 	
 	<div class="container mx-auto px-4 py-8 max-w-4xl">
-		<div class="flex justify-between items-center mb-8">
-			<h1 class="text-4xl font-bold text-center">
-				{#each 'Text to ASCII Art Generator'.split('') as char, i}
-					{#if char === ' '}
-						<span class="header-char inline-block w-2">&nbsp;</span>
-					{:else}
-						<span class="header-char inline-block">{char}</span>
-					{/if}
-				{/each}
-			</h1>
-			
-			<PopoverPrimitive.Root>
-				<PopoverPrimitive.Trigger>
-					<Button variant="ghost" size="icon" class="ml-auto">
-						<Settings size={20} />
-					</Button>
-				</PopoverPrimitive.Trigger>
-				<PopoverPrimitive.Content class="w-80">
-					<div class="space-y-4">
-						<h4 class="font-medium text-sm">Appearance Settings</h4>
-						
-						<div class="space-y-2">
-							<h5 class="text-sm font-medium">Accent Color</h5>
-							<RadioGroupPrimitive.Root value={accentColor} onValueChange={updateAccentColor}>
-								<div class="flex flex-wrap gap-2">
-									{#each accentColors as color}
-										<div class="flex items-center">
-											<RadioGroupPrimitive.Item value={color.value} id={`accent-${color.value}`} />
-											<Label for={`accent-${color.value}`} class="ml-2">{color.label}</Label>
-										</div>
-									{/each}
-								</div>
-							</RadioGroupPrimitive.Root>
-						</div>
-						
-						<div class="space-y-2">
-							<h5 class="text-sm font-medium">Background Style</h5>
-							<RadioGroupPrimitive.Root value={backgroundStyle} onValueChange={updateBackgroundStyle}>
-								<div class="flex flex-col space-y-1">
-									{#each backgroundStyles as style}
-										<div class="flex items-center">
-											<RadioGroupPrimitive.Item value={style.value} id={`bg-${style.value}`} />
-											<Label for={`bg-${style.value}`} class="ml-2">{style.label}</Label>
-										</div>
-									{/each}
-								</div>
-							</RadioGroupPrimitive.Root>
-						</div>
-					</div>
-				</PopoverPrimitive.Content>
-			</PopoverPrimitive.Root>
-		</div>
-
-		<div class="bg-card rounded-lg p-6 shadow-lg mb-8 backdrop-blur-sm" class:bg-opacity-90={backgroundStyle === 'matrix'}>
+		<h1 class="text-4xl font-bold mb-8 text-center">
+			{#each 'Text to ASCII Art Generator'.split('') as char, i}
+				{#if char === ' '}
+					<span class="header-char inline-block w-2">&nbsp;</span>
+				{:else}
+					<span class="header-char inline-block">{char}</span>
+				{/if}
+			{/each}
+		</h1>
+		
+		<div class="bg-card rounded-lg p-6 shadow-lg mb-8 backdrop-blur-sm" class:bg-opacity-90={backgroundStyleValue === 'matrix'}>
 			<div class="mb-6">
 				<label for="text-input" class="block text-sm font-medium mb-2">Input Text</label>
 				<input
@@ -556,7 +510,43 @@
 			</div>
 		</div>
 
-		<div class="bg-card rounded-lg p-6 shadow-lg mb-8 backdrop-blur-sm" class:bg-opacity-90={backgroundStyle === 'matrix'}>
+		<div class="p-6 mb-8 bg-card rounded-lg shadow-lg backdrop-blur-sm" class:bg-opacity-90={backgroundStyleValue === 'matrix'}>
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<div class="space-y-4">
+					<h2 class="text-xl font-semibold">Theme Settings</h2>
+					
+					<div class="space-y-2">
+						<h5 class="text-sm font-medium">Accent Color</h5>
+						<RadioGroupPrimitive.Root value={accentColorValue} onValueChange={updateAccentColor}>
+							<div class="flex flex-wrap gap-2">
+								{#each accentColors as color}
+									<div class="flex items-center">
+										<RadioGroupPrimitive.Item value={color.value} id={`accent-${color.value}`} />
+										<Label for={`accent-${color.value}`} class="ml-2">{color.label}</Label>
+									</div>
+								{/each}
+							</div>
+						</RadioGroupPrimitive.Root>
+					</div>
+					
+					<div class="space-y-2">
+						<h5 class="text-sm font-medium">Background Style</h5>
+						<RadioGroupPrimitive.Root value={backgroundStyleValue} onValueChange={updateBackgroundStyle}>
+							<div class="flex flex-col space-y-1">
+								{#each backgroundStyles as style}
+									<div class="flex items-center">
+										<RadioGroupPrimitive.Item value={style.value} id={`bg-${style.value}`} />
+										<Label for={`bg-${style.value}`} class="ml-2">{style.label}</Label>
+									</div>
+								{/each}
+							</div>
+						</RadioGroupPrimitive.Root>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="bg-card rounded-lg p-6 shadow-lg mb-8 backdrop-blur-sm" class:bg-opacity-90={backgroundStyleValue === 'matrix'}>
 			<div class="flex justify-between mb-4">
 				<h2 class="text-xl font-semibold">Generated ASCII Art</h2>
 				<div class="space-x-2 flex">
