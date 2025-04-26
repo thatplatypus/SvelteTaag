@@ -1,22 +1,40 @@
 <script lang="ts">
 	import '../app.css';
 	import ThemeToggle from '$lib/components/ui/theme-toggle.svelte';
-	import ThemeSettings from '$lib/components/ui/theme-settings.svelte';
-	import { setContext } from 'svelte';
+	import ThemeSettingsComponent from '$lib/components/ui/theme-settings.svelte';
+	import { setContext, onMount } from 'svelte';
 	import { writable } from 'svelte/store';
 	import { Settings, Github, HeartHandshake } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as PopoverPrimitive from '$lib/components/ui/popover';
+	import type { ThemeSettings, AccentColor, BackgroundStyle } from '$lib/types';
+	
 	let { children } = $props();
 	
-	// Create stores for theme settings
-	const accentColor = writable('default');
-	const backgroundStyle = writable('default');
+	// Create stores for theme settings with default values
+	const accentColor = writable<AccentColor>('default');
+	const backgroundStyle = writable<BackgroundStyle>('default');
 	
 	// Set context for use in other components
-	setContext('themeSettings', {
+	setContext<ThemeSettings>('themeSettings', {
 		accentColor,
 		backgroundStyle
+	});
+	
+	// Load saved settings on mount
+	onMount(() => {
+		// Load saved theme settings from localStorage
+		const savedAccentColor = localStorage.getItem('accentColor') as AccentColor | null;
+		if (savedAccentColor) {
+			console.log('Layout loading accent from localStorage:', savedAccentColor);
+			accentColor.set(savedAccentColor);
+		}
+		
+		const savedBackgroundStyle = localStorage.getItem('backgroundStyle') as BackgroundStyle | null;
+		if (savedBackgroundStyle) {
+			console.log('Layout loading background from localStorage:', savedBackgroundStyle);
+			backgroundStyle.set(savedBackgroundStyle);
+		}
 	});
 </script>
 
@@ -40,7 +58,7 @@
 						</PopoverPrimitive.Trigger>
 						<PopoverPrimitive.Content class="w-80" align="end">
 							<div class="p-4">
-								<ThemeSettings />
+								<ThemeSettingsComponent />
 							</div>
 						</PopoverPrimitive.Content>
 					</PopoverPrimitive.Root>					

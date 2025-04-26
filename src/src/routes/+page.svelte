@@ -1,30 +1,47 @@
 <script lang="ts">
-	import { onMount, getContext } from 'svelte';
+	import { onMount, getContext, afterUpdate } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select';
 	import { animate, stagger } from 'motion';
 	import figlet from 'figlet';
 	import { Label } from '$lib/components/ui/label';
 	import * as RadioGroupPrimitive from '$lib/components/ui/radio-group';
+	import type { ThemeSettings, AccentColor, BackgroundStyle } from '$lib/types';
+
+	// Counter to force reactivity updates - declared early to avoid initialization errors
+	let tickCounter = 0;
 	
-	const { accentColor, backgroundStyle } = getContext('themeSettings');
+	// Get theme settings from context
+	const { accentColor, backgroundStyle } = getContext<ThemeSettings>('themeSettings');
 	
-	let accentColorValue = 'default';
-	let backgroundStyleValue = 'default';
+	// Reactive local values derived from the stores
+	let accentColorValue: AccentColor = 'default';
+	let backgroundStyleValue: BackgroundStyle = 'default';
 	
+	// Subscribe to store updates directly
 	accentColor.subscribe(value => {
+		console.log('Page received accent color update:', value);
 		accentColorValue = value;
+		tickCounter++; // Force reactivity
+		
+		// Update matrix color if it's active
+		if (backgroundStyleValue === 'matrix' && window.matrixInterval) {
+			initMatrixEffect();
+		}
 	});
 	
 	backgroundStyle.subscribe(value => {
+		console.log('Page received background style update:', value);
 		backgroundStyleValue = value;
+		tickCounter++; // Force reactivity
+		
+		// Initialize matrix effect if needed
 		if (value === 'matrix') {
-			setTimeout(() => {
-				initMatrixEffect();
-			}, 100);
+			setTimeout(() => initMatrixEffect(), 10);
 		}
 	});
 
+	// Define text and font variables
 	let text = 'Type Something';
 	let font = 'Standard';
 	let horizontalLayout = 'default';
@@ -41,6 +58,7 @@
 	let fontChangeCount = 0; // Track how many times the font has been changed
 	let debugMessages: string[] = [];
 	
+	// Define accent color and background style options
 	const accentColors = [
 		{ value: 'default', label: 'Default (Blue)' },
 		{ value: 'purple', label: 'Purple' },
@@ -64,7 +82,42 @@
 		{ value: 'universal smushing', label: 'Universal Smushing' }
 	];
 
-	onMount(async () => {
+	// Reactive computation for the gradient class
+	$: gradientClass = getAccentGradient(accentColorValue);
+	
+	// Helper function to get the gradient class based on accent color
+	function getAccentGradient(accent: AccentColor) {
+		console.log('Computing gradient class for:', accent);
+		
+		switch (accent) {
+			case 'purple':
+				return 'from-purple-600 to-indigo-600';
+			case 'green':
+				return 'from-green-600 to-emerald-600';
+			case 'orange':
+				return 'from-orange-600 to-amber-600';
+			case 'red':
+				return 'from-red-600 to-rose-600';
+			case 'pink':
+				return 'from-pink-600 to-fuchsia-600';
+			default:
+				return 'from-primary to-sky-600';
+		}
+	}
+
+	// Listen for theme change events from settings
+	function handleThemeChanged(event: CustomEvent) {
+		console.log('Received theme-changed event:', event.detail);
+		// Force a component update
+		tickCounter++;
+	}
+
+	onMount(() => {
+		// Add listener for theme changes from settings component
+		document.addEventListener('theme-changed', handleThemeChanged as EventListener);
+		
+		console.log('Initial theme values on mount:', accentColorValue, backgroundStyleValue);
+		
 		figlet.defaults({ fontPath: 'https://unpkg.com/figlet/fonts/' });
 		
 		const savedFont = localStorage.getItem('favoriteFont');
@@ -96,6 +149,8 @@
 		loadInitialFonts();
 		
 		return () => {
+			// Clean up event listeners
+			document.removeEventListener('theme-changed', handleThemeChanged as EventListener);
 			window.removeEventListener('matrix-enabled', initMatrixEffect);
 		};
 	});
@@ -320,13 +375,13 @@
 	}
 	
 	function updateAccentColor(value: string) {
-		accentColor.set(value);
+		accentColor.set(value as AccentColor);
 		localStorage.setItem('accentColor', value);
 	}
 	
 	function updateBackgroundStyle(value: string) {
 		const oldValue = backgroundStyleValue;
-		backgroundStyle.set(value);
+		backgroundStyle.set(value as BackgroundStyle);
 		localStorage.setItem('backgroundStyle', value);
 		
 		if (value === 'matrix' && oldValue !== 'matrix') {
@@ -364,12 +419,19 @@
 			'pink': '#ec4899'
 		};
 		
+		// Clean up any existing matrix effect
+		if (window.matrixInterval) {
+			clearInterval(window.matrixInterval);
+			window.matrixInterval = undefined;
+		}
+		
+		// Draw function that uses the current accent color
 		const draw = () => {
 			// Semi-transparent black to create trail effect
 			ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
 			
-			// Set color based on current accent
+			// Always use the most current accent color
 			ctx.fillStyle = accentColorMap[accentColorValue] || '#0ea5e9';
 			ctx.font = `${fontSize}px monospace`;
 			
@@ -385,31 +447,47 @@
 			}
 		};
 		
-		const matrixInterval = setInterval(draw, 33);
+		// Start the animation
+		window.matrixInterval = setInterval(draw, 33);
 		
-		// Clean up on page unload or background change
-		return () => clearInterval(matrixInterval);
+		// Initial draw to show effect immediately
+		draw();
+		
+		// Respond to window resize
+		const handleResize = () => {
+			canvas.width = window.innerWidth;
+			canvas.height = window.innerHeight;
+			
+			// Recalculate columns
+			const newColumns = Math.floor(canvas.width / fontSize);
+			
+			// Reset drops array
+			drops.length = 0;
+			for (let i = 0; i < newColumns; i++) {
+				drops[i] = 1;
+			}
+		};
+		
+		window.addEventListener('resize', handleResize);
+		
+		// Return cleanup function
+		return () => {
+			if (window.matrixInterval) {
+				clearInterval(window.matrixInterval);
+				window.matrixInterval = undefined;
+			}
+			window.removeEventListener('resize', handleResize);
+		};
 	}
 	
-	function getAccentGradient() {
-		switch (accentColorValue) {
-			case 'purple':
-				return 'from-purple-600 to-indigo-600';
-			case 'green':
-				return 'from-green-600 to-emerald-600';
-			case 'orange':
-				return 'from-orange-600 to-amber-600';
-			case 'red':
-				return 'from-red-600 to-rose-600';
-			case 'pink':
-				return 'from-pink-600 to-fuchsia-600';
-			default:
-				return 'from-primary to-sky-600';
-		}
-	}
+	// After each update, make sure our UI is consistent
+	afterUpdate(() => {
+		// This runs after the component has updated
+		console.log('Component updated with theme:', accentColorValue, backgroundStyleValue);
+	});
 </script>
 
-<div class="{backgroundStyleValue === 'gradient' ? 'bg-gradient-to-br ' + getAccentGradient() + ' min-h-screen text-white' : 'min-h-screen'}" class:matrix-container={backgroundStyleValue === 'matrix'}>
+<div class="{backgroundStyleValue === 'gradient' ? 'bg-gradient-to-br ' + gradientClass + ' min-h-screen text-white' : 'min-h-screen'}" class:matrix-container={backgroundStyleValue === 'matrix'} data-tick={tickCounter}>
 	{#if backgroundStyleValue === 'matrix'}
 		<canvas id="matrix-bg" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
 	{/if}
@@ -503,7 +581,8 @@
 			<div class="w-full">
 				<Button 
 					on:click={generateAsciiArt} 
-					class="w-full py-3 text-center text-white font-medium text-lg bg-gradient-to-r {getAccentGradient()} hover:shadow-lg transition-all duration-300 ease-in-out"
+					class="w-full py-3 text-center text-white font-medium text-lg bg-gradient-to-r {gradientClass} hover:shadow-lg transition-all duration-300 ease-in-out"
+					data-accent={accentColorValue}
 				>
 					Generate ASCII Art
 				</Button>
