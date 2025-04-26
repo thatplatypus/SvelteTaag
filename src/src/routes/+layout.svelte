@@ -55,17 +55,20 @@
 		<div class="container flex flex-col items-center justify-between gap-4 md:h-14 md:flex-row">
 			<p class="text-center text-sm leading-loose text-muted-foreground md:text-left">
 				Built with <a href="https://kit.svelte.dev" target="_blank" rel="noopener noreferrer" class="font-medium underline underline-offset-4">SvelteKit</a>,
+				<a href="https://www.shadcn-svelte.com/" target="_blank" rel="noopener noreferrer" class="font-medium underline underline-offset-4">ShadCn</a>,
 				<a href="https://tailwindcss.com" target="_blank" rel="noopener noreferrer" class="font-medium underline underline-offset-4">Tailwind</a>, and
 				<a href="https://github.com/patorjk/figlet.js" target="_blank" rel="noopener noreferrer" class="font-medium underline underline-offset-4">figlet.js</a>
 			</p>
-			<div class="flex items-center space-x-1">
-				<span class="text-sm text-muted-foreground">Open Source</span>
+			<div class="flex items-center space-x-1 rounded-2xl p-[2px] bg-gradient-to-r from-red-500 via-pink-500 to-red-400">
+				<span class="rounded-2xl bg-white dark:bg-gray-900 p-1 flex items-center space-x-1">
 				<HeartHandshake size={16} class="text-primary" />
+				<span class="text-sm text-muted-foreground">Open Source</span>
 				<a href="https://github.com/ThatPlatypus/SvelteTaag" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
 					<Button variant="ghost" size="icon">
 						<Github size={20} />
 					</Button>
 				</a>
+			</span>
 			</div>
 		</div>
 	</footer>
