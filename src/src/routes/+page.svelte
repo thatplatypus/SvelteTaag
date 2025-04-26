@@ -2,9 +2,20 @@
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select';
+	import { Settings } from 'lucide-svelte';
 	import { animate, stagger } from 'motion';
 	import figlet from 'figlet';
-	type Selected = string | number | undefined;
+	import { Label } from '$lib/components/ui/label';
+	import * as PopoverPrimitive from '$lib/components/ui/popover';
+	import * as RadioGroupPrimitive from '$lib/components/ui/radio-group';
+	
+	// Define a proper type for the Selected value
+	type Selected = string | number;
+	
+	// For ShadCN Select component
+	interface SelectChangeValue<T> {
+		value: T;
+	}
 
 	let text = 'Type Something';
 	let font = 'Standard';
@@ -21,6 +32,25 @@
 	let currentFont = ''; // Track current font for debugging
 	let fontChangeCount = 0; // Track how many times the font has been changed
 	let debugMessages: string[] = [];
+	
+	// Theme settings
+	let accentColor = 'default'; // default, purple, blue, green, orange, red
+	let backgroundStyle = 'default'; // default, gradient, matrix
+	
+	const accentColors = [
+		{ value: 'default', label: 'Default (Blue)' },
+		{ value: 'purple', label: 'Purple' },
+		{ value: 'green', label: 'Green' },
+		{ value: 'orange', label: 'Orange' },
+		{ value: 'red', label: 'Red' },
+		{ value: 'pink', label: 'Pink' }
+	];
+	
+	const backgroundStyles = [
+		{ value: 'default', label: 'ShadCN Classic' },
+		{ value: 'gradient', label: 'Gradient Effect' },
+		{ value: 'matrix', label: 'Matrix Effect' }
+	];
 	
 	const layoutOptions = [
 		{ value: 'default', label: 'Default' },
@@ -50,6 +80,22 @@
 				recentFonts = JSON.parse(savedRecentFonts);
 			} catch (e) {
 				console.error('Error parsing recent fonts:', e);
+			}
+		}
+		
+		// Load saved theme settings
+		const savedAccentColor = localStorage.getItem('accentColor');
+		if (savedAccentColor) {
+			accentColor = savedAccentColor;
+		}
+		
+		const savedBackgroundStyle = localStorage.getItem('backgroundStyle');
+		if (savedBackgroundStyle) {
+			backgroundStyle = savedBackgroundStyle;
+			if (backgroundStyle === 'matrix') {
+				setTimeout(() => {
+					initMatrixEffect();
+				}, 100);
 			}
 		}
 		
@@ -245,9 +291,10 @@
 		text = (e.target as HTMLInputElement).value;
 	}
 
-	function handleFontChange(selected: Selected) {
-		if (selected !== undefined) {
+	function handleFontChange(value: any) {
+		if (value && value.value !== undefined) {
 			fontChangeCount++;
+			const selected = value.value;
 			const message = `Font selected/changed to: ${selected} (change #${fontChangeCount})`;
 			console.log(message);
 			debugMessages = [...debugMessages, message];
@@ -255,8 +302,9 @@
 		}
 	}
 
-	function handleLayoutChange(selected: Selected) {
-		if (selected !== undefined) {
+	function handleLayoutChange(value: any) {
+		if (value && value.value !== undefined) {
+			const selected = value.value;
 			const message = `Layout selected: ${selected}`;
 			console.log(message);
 			debugMessages = [...debugMessages, message];
@@ -272,133 +320,278 @@
 		debugMessages = [...debugMessages, message];
 		generateAsciiArt();
 	}
+	
+	function updateAccentColor(value: string) {
+		accentColor = value;
+		localStorage.setItem('accentColor', accentColor);
+	}
+	
+	function updateBackgroundStyle(value: string) {
+		const oldValue = backgroundStyle;
+		backgroundStyle = value;
+		localStorage.setItem('backgroundStyle', backgroundStyle);
+		
+		if (backgroundStyle === 'matrix' && oldValue !== 'matrix') {
+			setTimeout(() => {
+				initMatrixEffect();
+			}, 100);
+		}
+	}
+	
+	function initMatrixEffect() {
+		const canvas = document.getElementById('matrix-bg') as HTMLCanvasElement;
+		if (!canvas) return;
+		
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+		
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
+		
+		const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+		const fontSize = 16;
+		const columns = Math.floor(canvas.width / fontSize);
+		
+		// Array to track positions of characters
+		const drops: number[] = [];
+		for (let i = 0; i < columns; i++) {
+			drops[i] = 1;
+		}
+		
+		const accentColorMap: Record<string, string> = {
+			'default': '#0ea5e9', // sky blue
+			'purple': '#8b5cf6',
+			'green': '#10b981',
+			'orange': '#f97316',
+			'red': '#ef4444',
+			'pink': '#ec4899'
+		};
+		
+		const draw = () => {
+			// Semi-transparent black to create trail effect
+			ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			
+			// Set color based on current accent
+			ctx.fillStyle = accentColorMap[accentColor] || '#0ea5e9';
+			ctx.font = `${fontSize}px monospace`;
+			
+			for (let i = 0; i < drops.length; i++) {
+				const text = chars[Math.floor(Math.random() * chars.length)];
+				ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+				
+				if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+					drops[i] = 0;
+				}
+				
+				drops[i]++;
+			}
+		};
+		
+		const matrixInterval = setInterval(draw, 33);
+		
+		// Clean up on page unload or background change
+		return () => clearInterval(matrixInterval);
+	}
+	
+	function getAccentGradient() {
+		switch (accentColor) {
+			case 'purple':
+				return 'from-purple-600 to-indigo-600';
+			case 'green':
+				return 'from-green-600 to-emerald-600';
+			case 'orange':
+				return 'from-orange-600 to-amber-600';
+			case 'red':
+				return 'from-red-600 to-rose-600';
+			case 'pink':
+				return 'from-pink-600 to-fuchsia-600';
+			default:
+				return 'from-primary to-sky-600';
+		}
+	}
 </script>
 
-<div class="container mx-auto px-4 py-8 max-w-4xl">
-	<h1 class="text-4xl font-bold mb-8 text-center">
-		{#each 'Text to ASCII Art Generator'.split('') as char, i}
-			{#if char === ' '}
-				<span class="header-char inline-block w-2">&nbsp;</span>
-			{:else}
-				<span class="header-char inline-block">{char}</span>
-			{/if}
-		{/each}
-	</h1>
-
-	<div class="bg-card rounded-lg p-6 shadow-lg mb-8">
-		<div class="mb-6">
-			<label for="text-input" class="block text-sm font-medium mb-2">Input Text</label>
-			<input
-				id="text-input"
-				type="text"
-				value={text}
-				on:input={handleTextChange}
-				class="w-full p-2 border rounded-md bg-background"
-				placeholder="Type something..."
-			/>
+<div class="{backgroundStyle === 'gradient' ? 'bg-gradient-to-br ' + getAccentGradient() + ' min-h-screen text-white' : 'min-h-screen'}" class:matrix-container={backgroundStyle === 'matrix'}>
+	{#if backgroundStyle === 'matrix'}
+		<canvas id="matrix-bg" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
+	{/if}
+	
+	<div class="container mx-auto px-4 py-8 max-w-4xl">
+		<div class="flex justify-between items-center mb-8">
+			<h1 class="text-4xl font-bold text-center">
+				{#each 'Text to ASCII Art Generator'.split('') as char, i}
+					{#if char === ' '}
+						<span class="header-char inline-block w-2">&nbsp;</span>
+					{:else}
+						<span class="header-char inline-block">{char}</span>
+					{/if}
+				{/each}
+			</h1>
+			
+			<PopoverPrimitive.Root>
+				<PopoverPrimitive.Trigger>
+					<Button variant="ghost" size="icon" class="ml-auto">
+						<Settings size={20} />
+					</Button>
+				</PopoverPrimitive.Trigger>
+				<PopoverPrimitive.Content class="w-80">
+					<div class="space-y-4">
+						<h4 class="font-medium text-sm">Appearance Settings</h4>
+						
+						<div class="space-y-2">
+							<h5 class="text-sm font-medium">Accent Color</h5>
+							<RadioGroupPrimitive.Root value={accentColor} onValueChange={updateAccentColor}>
+								<div class="flex flex-wrap gap-2">
+									{#each accentColors as color}
+										<div class="flex items-center">
+											<RadioGroupPrimitive.Item value={color.value} id={`accent-${color.value}`} />
+											<Label for={`accent-${color.value}`} class="ml-2">{color.label}</Label>
+										</div>
+									{/each}
+								</div>
+							</RadioGroupPrimitive.Root>
+						</div>
+						
+						<div class="space-y-2">
+							<h5 class="text-sm font-medium">Background Style</h5>
+							<RadioGroupPrimitive.Root value={backgroundStyle} onValueChange={updateBackgroundStyle}>
+								<div class="flex flex-col space-y-1">
+									{#each backgroundStyles as style}
+										<div class="flex items-center">
+											<RadioGroupPrimitive.Item value={style.value} id={`bg-${style.value}`} />
+											<Label for={`bg-${style.value}`} class="ml-2">{style.label}</Label>
+										</div>
+									{/each}
+								</div>
+							</RadioGroupPrimitive.Root>
+						</div>
+					</div>
+				</PopoverPrimitive.Content>
+			</PopoverPrimitive.Root>
 		</div>
 
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-			<div>
-				<label class="block text-sm font-medium mb-2">Font</label>
-				<Select onSelectedChange={handleFontChange}>
-					<SelectTrigger class="w-full">
-						<SelectValue placeholder="Select a font">
-							{font}
-						</SelectValue>
-					</SelectTrigger>
-					<SelectContent 
-						class="max-h-[400px] overflow-y-auto"
-						sideOffset={4}
-					>
-						{#if favoriteFont}
+		<div class="bg-card rounded-lg p-6 shadow-lg mb-8 backdrop-blur-sm" class:bg-opacity-90={backgroundStyle === 'matrix'}>
+			<div class="mb-6">
+				<label for="text-input" class="block text-sm font-medium mb-2">Input Text</label>
+				<input
+					id="text-input"
+					type="text"
+					value={text}
+					on:input={handleTextChange}
+					class="w-full p-2 border rounded-md bg-background"
+					placeholder="Type something..."
+				/>
+			</div>
+
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+				<div>
+					<label class="block text-sm font-medium mb-2">Font</label>
+					<Select onSelectedChange={(value) => handleFontChange(value)}>
+						<SelectTrigger class="w-full">
+							<SelectValue placeholder="Select a font">
+								{font}
+							</SelectValue>
+						</SelectTrigger>
+						<SelectContent 
+							class="max-h-[400px] overflow-y-auto"
+							sideOffset={4}
+						>
+							{#if favoriteFont}
+								<div class="p-2 border-b">
+									<h3 class="text-sm font-semibold mb-2">Favorite</h3>
+									<SelectItem value={favoriteFont}>{favoriteFont}</SelectItem>
+								</div>
+							{/if}
+							
+							{#if recentFonts.length > 0}
+								<div class="p-2 border-b">
+									<h3 class="text-sm font-semibold mb-2">Recent</h3>
+									{#each recentFonts as recentFont}
+										<SelectItem value={recentFont}>{recentFont}</SelectItem>
+									{/each}
+								</div>
+							{/if}
+							
 							<div class="p-2 border-b">
-								<h3 class="text-sm font-semibold mb-2">Favorite</h3>
-								<SelectItem value={favoriteFont}>{favoriteFont}</SelectItem>
-							</div>
-						{/if}
-						
-						{#if recentFonts.length > 0}
-							<div class="p-2 border-b">
-								<h3 class="text-sm font-semibold mb-2">Recent</h3>
-								{#each recentFonts as recentFont}
-									<SelectItem value={recentFont}>{recentFont}</SelectItem>
+								<h3 class="text-sm font-semibold mb-2">Popular</h3>
+								{#each popularFonts as popularFont}
+									<SelectItem value={popularFont}>{popularFont}</SelectItem>
 								{/each}
 							</div>
-						{/if}
-						
-						<div class="p-2 border-b">
-							<h3 class="text-sm font-semibold mb-2">Popular</h3>
-							{#each popularFonts as popularFont}
-								<SelectItem value={popularFont}>{popularFont}</SelectItem>
+							
+							<div class="p-2">
+								<h3 class="text-sm font-semibold mb-2">All Fonts</h3>
+								{#each fonts as fontName}
+									<SelectItem value={fontName}>{fontName}</SelectItem>
+								{/each}
+							</div>
+						</SelectContent>
+					</Select>
+				</div>
+				<div>
+					<label class="block text-sm font-medium mb-2">Kerning Style</label>
+					<Select onSelectedChange={(value) => handleLayoutChange(value)}>
+						<SelectTrigger class="w-full">
+							<SelectValue placeholder="Select a style">
+								{horizontalLayout}
+							</SelectValue>
+						</SelectTrigger>
+						<SelectContent>
+							{#each layoutOptions as option}
+								<SelectItem value={option.value}>{option.label}</SelectItem>
 							{/each}
-						</div>
-						
-						<div class="p-2">
-							<h3 class="text-sm font-semibold mb-2">All Fonts</h3>
-							{#each fonts as fontName}
-								<SelectItem value={fontName}>{fontName}</SelectItem>
-							{/each}
-						</div>
-					</SelectContent>
-				</Select>
+						</SelectContent>
+					</Select>
+				</div>
 			</div>
-			<div>
-				<label class="block text-sm font-medium mb-2">Kerning Style</label>
-				<Select onSelectedChange={handleLayoutChange}>
-					<SelectTrigger class="w-full">
-						<SelectValue placeholder="Select a style">
-							{horizontalLayout}
-						</SelectValue>
-					</SelectTrigger>
-					<SelectContent>
-						{#each layoutOptions as option}
-							<SelectItem value={option.value}>{option.label}</SelectItem>
-						{/each}
-					</SelectContent>
-				</Select>
+			
+			<div class="w-full">
+				<Button 
+					on:click={generateAsciiArt} 
+					class="w-full py-3 text-center text-white font-medium text-lg bg-gradient-to-r {getAccentGradient()} hover:shadow-lg transition-all duration-300 ease-in-out"
+				>
+					Generate ASCII Art
+				</Button>
 			</div>
 		</div>
-		
-		<div class="flex justify-center">
-			<Button 
-				on:click={generateAsciiArt} 
-				class="bg-gradient-to-r from-primary to-purple-600 hover:from-primary hover:to-purple-500 text-white px-8 py-2 rounded-md shadow-md transition-all duration-300 ease-in-out hover:shadow-lg"
-			>
-				Generate ASCII Art
-			</Button>
-		</div>
-	</div>
 
-	<div class="bg-card rounded-lg p-6 shadow-lg mb-8">
-		<div class="flex justify-between mb-4">
-			<h2 class="text-xl font-semibold">Generated ASCII Art</h2>
-			<div class="space-x-2 flex">
-				<Button on:click={setFavoriteFont} variant="outline" disabled={loading || font === favoriteFont} size="sm" class="favorite-button">
-					<span class="favorite-icon inline-block mr-1">❤️</span>
-					Favorite
-				</Button>
-				<Button on:click={copyToClipboard} variant="outline" disabled={loading || !asciiArt} size="sm" class="copy-button">
-					<span class="copy-icon inline-block mr-1">{copying ? '✓' : '📋'}</span>
-					{copying ? 'Copied!' : 'Copy'}
-				</Button>
-				{#if typeof navigator !== 'undefined' && 'share' in navigator}
-					<Button on:click={shareAsciiArt} variant="outline" disabled={loading || !asciiArt} size="sm" class="share-button">
-						<span class="share-icon inline-block mr-1">{shareSuccess ? '✓' : '📤'}</span>
-						{shareSuccess ? 'Shared!' : 'Share'}
+		<div class="bg-card rounded-lg p-6 shadow-lg mb-8 backdrop-blur-sm" class:bg-opacity-90={backgroundStyle === 'matrix'}>
+			<div class="flex justify-between mb-4">
+				<h2 class="text-xl font-semibold">Generated ASCII Art</h2>
+				<div class="space-x-2 flex">
+					<Button on:click={setFavoriteFont} variant="outline" disabled={loading || font === favoriteFont} size="sm" class="favorite-button">
+						<span class="favorite-icon inline-block mr-1">❤️</span>
+						Favorite
 					</Button>
-				{/if}
+					<Button on:click={copyToClipboard} variant="outline" disabled={loading || !asciiArt} size="sm" class="copy-button">
+						<span class="copy-icon inline-block mr-1">{copying ? '✓' : '📋'}</span>
+						{copying ? 'Copied!' : 'Copy'}
+					</Button>
+					{#if typeof navigator !== 'undefined' && 'share' in navigator}
+						<Button on:click={shareAsciiArt} variant="outline" disabled={loading || !asciiArt} size="sm" class="share-button">
+							<span class="share-icon inline-block mr-1">{shareSuccess ? '✓' : '📤'}</span>
+							{shareSuccess ? 'Shared!' : 'Share'}
+						</Button>
+					{/if}
+				</div>
 			</div>
-		</div>
 
-		{#if loading}
-			<div class="flex justify-center p-8">
-				<div class="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-			</div>
-		{:else}
-			<div class="ascii-container bg-background p-4 rounded-md overflow-x-auto">
-				<pre class="text-left whitespace-pre text-sm font-mono">{asciiArt}</pre>
-			</div>
-		{/if}
+			{#if loading}
+				<div class="flex justify-center p-8">
+					<div class="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+				</div>
+			{:else}
+				<div class="ascii-container bg-background p-4 rounded-md overflow-x-auto">
+					<pre class="text-left whitespace-pre text-sm font-mono">{asciiArt}</pre>
+				</div>
+			{/if}
+		</div>
 	</div>
 </div>
+
+<style>
+	.matrix-container {
+		color: white;
+	}
+</style>
