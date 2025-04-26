@@ -7,7 +7,7 @@
 
 	let text = 'Type Something';
 	let font = 'Standard';
-	let width = 80;
+	let horizontalLayout = 'default';
 	let asciiArt = '';
 	let fonts: string[] = [];
 	let loading = true;
@@ -17,6 +17,17 @@
 	let recentFonts: string[] = [];
 	let popularFonts = ['Standard', 'Graffiti', 'ANSI Shadow', 'Slant', 'Small', 'Big', 'Banner'];
 	let fontsLoaded = false;
+	let currentFont = ''; // Track current font for debugging
+	let fontChangeCount = 0; // Track how many times the font has been changed
+	let debugMessages: string[] = [];
+	
+	const layoutOptions = [
+		{ value: 'default', label: 'Default' },
+		{ value: 'full', label: 'Full' },
+		{ value: 'fitted', label: 'Fitted' },
+		{ value: 'controlled smushing', label: 'Controlled Smushing' },
+		{ value: 'universal smushing', label: 'Universal Smushing' }
+	];
 
 	onMount(async () => {
 		figlet.defaults({ fontPath: 'https://unpkg.com/figlet/fonts/' });
@@ -27,9 +38,9 @@
 			font = savedFont;
 		}
 		
-		const savedWidth = localStorage.getItem('preferredWidth');
-		if (savedWidth) {
-			width = parseInt(savedWidth);
+		const savedLayout = localStorage.getItem('preferredLayout');
+		if (savedLayout) {
+			horizontalLayout = savedLayout;
 		}
 		
 		const savedRecentFonts = localStorage.getItem('recentFonts');
@@ -109,42 +120,75 @@
 		loading = false;
 	}
 
+	function loadFont(fontName: string) {
+		return new Promise<void>((resolve, reject) => {
+			fetch(`https://unpkg.com/figlet/fonts/${fontName}.flf`)
+				.then(response => {
+					if (!response.ok) {
+						throw new Error(`Failed to load font: ${fontName}`);
+					}
+					return response.text();
+				})
+				.then(fontData => {
+					figlet.parseFont(fontName, fontData);
+					const message = `Font loaded: ${fontName}`;
+					console.log(message);
+					debugMessages = [...debugMessages, message];
+					resolve();
+				})
+				.catch(error => {
+					console.error(`Error loading font ${fontName}:`, error);
+					debugMessages = [...debugMessages, `Error loading font: ${fontName}`];
+					reject(error);
+				});
+		});
+	}
+
 	function generateAsciiArt() {
 		loading = true;
+		const message = `Generating with font: "${font}", layout: "${horizontalLayout}", change count: ${fontChangeCount}`;
+		console.log(message);
+		debugMessages = [...debugMessages, message];
+		currentFont = font;
 		
 		if (font !== favoriteFont && !recentFonts.includes(font)) {
 			recentFonts = [font, ...recentFonts.slice(0, 4)];
 			localStorage.setItem('recentFonts', JSON.stringify(recentFonts));
 		}
 		
-		setTimeout(() => {
-			try {
-				const result = figlet.textSync(text, { font, width });
-				asciiArt = result;
-				loading = false;
-				
-				animate('.ascii-container', 
-					{ opacity: [0, 1] }, 
-					{ duration: 0.3 }
-				);
-			} catch (err) {
-				console.error('Error generating ASCII art:', err);
-				
-				fetch(`https://unpkg.com/figlet/fonts/${font}.flf`)
-					.then(response => response.text())
-					.then(fontData => {
-						figlet.parseFont(font, fontData);
-						const result = figlet.textSync(text, { font, width });
-						asciiArt = result;
-					})
-					.catch(() => {
-						asciiArt = `Error: Could not load font "${font}"`;
-					})
-					.finally(() => {
-						loading = false;
+		// Always reload the selected font to ensure it's available
+		loadFont(font)
+			.then(() => {
+				try {
+					const result = figlet.textSync(text, { 
+						font, 
+						horizontalLayout 
 					});
-			}
-		}, 100);
+					console.log(`Generated ASCII art with font: ${font}`);
+					debugMessages = [...debugMessages, `Generated ASCII art with font: ${font}`];
+					asciiArt = result;
+					loading = false;
+					
+					const container = document.querySelector('.ascii-container');
+					if (container) {
+						animate('.ascii-container', 
+							{ opacity: [0, 1] }, 
+							{ duration: 0.3 }
+						);
+					}
+				} catch (error) {
+					console.error(`Error in figlet.textSync: ${error}`);
+					debugMessages = [...debugMessages, `Error in figlet.textSync: ${error}`];
+					asciiArt = `Error generating ASCII art: ${error}`;
+					loading = false;
+				}
+			})
+			.catch(error => {
+				console.error('Error generating ASCII art:', error);
+				debugMessages = [...debugMessages, `Error generating ASCII art: ${error}`];
+				asciiArt = `Error: Could not load font "${font}"`;
+				loading = false;
+			});
 	}
 
 	function copyToClipboard() {
@@ -199,22 +243,44 @@
 
 	function handleTextChange(e: Event) {
 		text = (e.target as HTMLInputElement).value;
-		generateAsciiArt();
 	}
 
 	function handleFontChange(value: string) {
+		fontChangeCount++;
+		const message = `Font selected/changed to: ${value} (change #${fontChangeCount})`;
+		console.log(message);
+		debugMessages = [...debugMessages, message];
 		font = value;
-		generateAsciiArt();
 	}
 
-	function handleWidthChange(e: Event) {
-		width = parseInt((e.target as HTMLInputElement).value);
-		localStorage.setItem('preferredWidth', width.toString());
-		generateAsciiArt();
+	function handleLayoutChange(value: string) {
+		const message = `Layout selected: ${value}`;
+		console.log(message);
+		debugMessages = [...debugMessages, message];
+		horizontalLayout = value;
+		localStorage.setItem('preferredLayout', horizontalLayout);
 	}
 	
 	function handleSelectValueChange(event: CustomEvent<string>) {
+		const message = `Select value changed to: ${event.detail}`;
+		console.log(message);
+		debugMessages = [...debugMessages, message];
 		handleFontChange(event.detail);
+	}
+	
+	function handleLayoutValueChange(event: CustomEvent<string>) {
+		const message = `Layout value changed to: ${event.detail}`;
+		console.log(message);
+		debugMessages = [...debugMessages, message];
+		handleLayoutChange(event.detail);
+	}
+	
+	function resetFontToStandard() {
+		font = 'Standard';
+		const message = 'Font reset to Standard';
+		console.log(message);
+		debugMessages = [...debugMessages, message];
+		generateAsciiArt();
 	}
 </script>
 
@@ -245,56 +311,59 @@
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 			<div>
 				<label class="block text-sm font-medium mb-2">Font</label>
-				<Select on:valueChange={handleSelectValueChange}>
-					<SelectTrigger class="w-full">
-						<SelectValue>{font}</SelectValue>
-					</SelectTrigger>
-					<SelectContent>
+				<div class="flex gap-2">
+					<select 
+						bind:value={font}
+						class="w-full p-2 border rounded-md bg-background"
+					>
 						{#if favoriteFont}
-							<div class="p-2 border-b">
-								<h3 class="text-sm font-semibold mb-2">Favorite</h3>
-								<SelectItem value={favoriteFont}>{favoriteFont}</SelectItem>
-							</div>
+							<optgroup label="Favorite">
+								<option value={favoriteFont}>{favoriteFont}</option>
+							</optgroup>
 						{/if}
 						
 						{#if recentFonts.length > 0}
-							<div class="p-2 border-b">
-								<h3 class="text-sm font-semibold mb-2">Recent</h3>
+							<optgroup label="Recent">
 								{#each recentFonts as recentFont}
-									<SelectItem value={recentFont}>{recentFont}</SelectItem>
+									<option value={recentFont}>{recentFont}</option>
 								{/each}
-							</div>
+							</optgroup>
 						{/if}
 						
-						<div class="p-2 border-b">
-							<h3 class="text-sm font-semibold mb-2">Popular</h3>
+						<optgroup label="Popular">
 							{#each popularFonts as popularFont}
-								<SelectItem value={popularFont}>{popularFont}</SelectItem>
+								<option value={popularFont}>{popularFont}</option>
 							{/each}
-						</div>
+						</optgroup>
 						
-						<div class="p-2">
-							<h3 class="text-sm font-semibold mb-2">All Fonts</h3>
+						<optgroup label="All Fonts">
 							{#each fonts as fontName}
-								<SelectItem value={fontName}>{fontName}</SelectItem>
+								<option value={fontName}>{fontName}</option>
 							{/each}
-						</div>
-					</SelectContent>
-				</Select>
+						</optgroup>
+					</select>
+				</div>
 			</div>
 			<div>
-				<label for="width-input" class="block text-sm font-medium mb-2">Character Width ({width})</label>
-				<input
-					id="width-input"
-					type="range"
-					min="40"
-					max="200"
-					step="5"
-					value={width}
-					on:input={handleWidthChange}
-					class="w-full"
-				/>
+				<label class="block text-sm font-medium mb-2">Kerning Style</label>
+				<select 
+					bind:value={horizontalLayout}
+					class="w-full p-2 border rounded-md bg-background"
+				>
+					{#each layoutOptions as option}
+						<option value={option.value}>{option.label}</option>
+					{/each}
+				</select>
 			</div>
+		</div>
+		
+		<div class="flex justify-center">
+			<Button 
+				on:click={generateAsciiArt} 
+				class="bg-gradient-to-r from-primary to-purple-600 hover:from-primary hover:to-purple-500 text-white px-8 py-2 rounded-md shadow-md transition-all duration-300 ease-in-out hover:shadow-lg"
+			>
+				Generate ASCII Art
+			</Button>
 		</div>
 	</div>
 

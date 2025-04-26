@@ -9,7 +9,7 @@
 		<div class="container flex h-14 items-center">
 			<div class="mr-4 flex">
 				<a href="/" class="flex items-center space-x-2">
-					<span class="font-bold">TAAG</span>
+					<span class="font-bold">Svelte TAAG</span>
 				</a>
 			</div>
 			<div class="flex flex-1 items-center justify-end">
