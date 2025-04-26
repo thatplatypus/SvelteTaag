@@ -1,4 +1,4 @@
 // Global type declarations
 interface Window {
-    matrixInterval?: number;
+    // No longer need matrixInterval property
 } 

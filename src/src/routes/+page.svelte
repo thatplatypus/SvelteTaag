@@ -7,6 +7,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as RadioGroupPrimitive from '$lib/components/ui/radio-group';
 	import type { ThemeSettings, AccentColor, BackgroundStyle } from '$lib/types';
+	import MatrixBackground from '$lib/components/ui/matrix-background.svelte';
 
 	// Counter to force reactivity updates - declared early to avoid initialization errors
 	let tickCounter = 0;
@@ -23,22 +24,12 @@
 		console.log('Page received accent color update:', value);
 		accentColorValue = value;
 		tickCounter++; // Force reactivity
-		
-		// Update matrix color if it's active
-		if (backgroundStyleValue === 'matrix' && window.matrixInterval) {
-			initMatrixEffect();
-		}
 	});
 	
 	backgroundStyle.subscribe(value => {
 		console.log('Page received background style update:', value);
 		backgroundStyleValue = value;
 		tickCounter++; // Force reactivity
-		
-		// Initialize matrix effect if needed
-		if (value === 'matrix') {
-			setTimeout(() => initMatrixEffect(), 10);
-		}
 	});
 
 	// Define text and font variables
@@ -140,18 +131,11 @@
 			}
 		}
 		
-		if (backgroundStyleValue === 'matrix') {
-			initMatrixEffect();
-		}
-		
-		window.addEventListener('matrix-enabled', initMatrixEffect);
-		
 		loadInitialFonts();
 		
 		return () => {
 			// Clean up event listeners
 			document.removeEventListener('theme-changed', handleThemeChanged as EventListener);
-			window.removeEventListener('matrix-enabled', initMatrixEffect);
 		};
 	});
 
@@ -386,98 +370,11 @@
 		
 		if (value === 'matrix' && oldValue !== 'matrix') {
 			setTimeout(() => {
-				initMatrixEffect();
+				// Dispatch an event to notify that matrix mode has been enabled
+				const event = new CustomEvent('matrix-enabled');
+				window.dispatchEvent(event);
 			}, 100);
 		}
-	}
-	
-	function initMatrixEffect() {
-		const canvas = document.getElementById('matrix-bg') as HTMLCanvasElement;
-		if (!canvas) return;
-		
-		const ctx = canvas.getContext('2d');
-		if (!ctx) return;
-		
-		canvas.width = window.innerWidth;
-		canvas.height = window.innerHeight;
-		
-		const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-		const fontSize = 16;
-		const columns = Math.floor(canvas.width / fontSize);
-		
-		const drops: number[] = [];
-		for (let i = 0; i < columns; i++) {
-			drops[i] = 1;
-		}
-		
-		const accentColorMap: Record<string, string> = {
-			'default': '#0ea5e9', // sky blue
-			'purple': '#8b5cf6',
-			'green': '#10b981',
-			'orange': '#f97316',
-			'red': '#ef4444',
-			'pink': '#ec4899'
-		};
-		
-		// Clean up any existing matrix effect
-		if (window.matrixInterval) {
-			clearInterval(window.matrixInterval);
-			window.matrixInterval = undefined;
-		}
-		
-		// Draw function that uses the current accent color
-		const draw = () => {
-			// Semi-transparent black to create trail effect
-			ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			
-			// Always use the most current accent color
-			ctx.fillStyle = accentColorMap[accentColorValue] || '#0ea5e9';
-			ctx.font = `${fontSize}px monospace`;
-			
-			for (let i = 0; i < drops.length; i++) {
-				const text = chars[Math.floor(Math.random() * chars.length)];
-				ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-				
-				if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-					drops[i] = 0;
-				}
-				
-				drops[i]++;
-			}
-		};
-		
-		// Start the animation
-		window.matrixInterval = setInterval(draw, 33);
-		
-		// Initial draw to show effect immediately
-		draw();
-		
-		// Respond to window resize
-		const handleResize = () => {
-			canvas.width = window.innerWidth;
-			canvas.height = window.innerHeight;
-			
-			// Recalculate columns
-			const newColumns = Math.floor(canvas.width / fontSize);
-			
-			// Reset drops array
-			drops.length = 0;
-			for (let i = 0; i < newColumns; i++) {
-				drops[i] = 1;
-			}
-		};
-		
-		window.addEventListener('resize', handleResize);
-		
-		// Return cleanup function
-		return () => {
-			if (window.matrixInterval) {
-				clearInterval(window.matrixInterval);
-				window.matrixInterval = undefined;
-			}
-			window.removeEventListener('resize', handleResize);
-		};
 	}
 	
 	// After each update, make sure our UI is consistent
@@ -487,12 +384,17 @@
 	});
 </script>
 
-<div class="{backgroundStyleValue === 'gradient' ? 'bg-gradient-to-br ' + gradientClass + ' min-h-screen text-white' : 'min-h-screen'}" class:matrix-container={backgroundStyleValue === 'matrix'} data-tick={tickCounter}>
+<div 
+	class="min-h-screen {backgroundStyleValue === 'gradient' ? 'bg-gradient-to-br ' + gradientClass : ''}" 
+	class:bg-black={backgroundStyleValue === 'matrix'} 
+	style="position: relative;" 
+	data-tick={tickCounter}
+>
 	{#if backgroundStyleValue === 'matrix'}
-		<canvas id="matrix-bg" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
+		<MatrixBackground accentColor={accentColorValue} />
 	{/if}
 	
-	<div class="container mx-auto px-4 py-8 max-w-4xl">
+	<div class="container mx-auto px-4 py-8 max-w-4xl relative z-10">
 		<h1 class="text-4xl font-bold mb-8 text-center">
 			{#each 'Text to ASCII Art Generator'.split('') as char, i}
 				{#if char === ' '}
@@ -625,7 +527,12 @@
 </div>
 
 <style>
-	.matrix-container {
-		color: white;
+	/* Ensure our matrix content is visible over the background */
+	:global(.bg-black) {
+		background-color: #000 !important;
+	}
+	
+	:global(.matrix-container) {
+		z-index: 1 !important;
 	}
 </style>

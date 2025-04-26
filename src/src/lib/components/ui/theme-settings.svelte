@@ -49,9 +49,10 @@
         
         if (value === 'matrix') {
             setTimeout(() => {
+                console.log('Dispatching matrix-enabled event');
                 const event = new CustomEvent('matrix-enabled');
                 window.dispatchEvent(event);
-            }, 100);
+            }, 10);
         }
     }
     
