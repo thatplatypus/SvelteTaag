@@ -11,19 +11,15 @@
 	
 	let { children } = $props();
 	
-	// Create stores for theme settings with default values
 	const accentColor = writable<AccentColor>('default');
 	const backgroundStyle = writable<BackgroundStyle>('default');
 	
-	// Set context for use in other components
 	setContext<ThemeSettings>('themeSettings', {
 		accentColor,
 		backgroundStyle
 	});
 	
-	// Load saved settings on mount
 	onMount(() => {
-		// Load saved theme settings from localStorage
 		const savedAccentColor = localStorage.getItem('accentColor') as AccentColor | null;
 		if (savedAccentColor) {
 			console.log('Layout loading accent from localStorage:', savedAccentColor);
@@ -78,7 +74,7 @@
 				<a href="https://github.com/patorjk/figlet.js" target="_blank" rel="noopener noreferrer" class="font-medium underline underline-offset-4">figlet.js</a>
 			</p>
 			<div class="flex items-center space-x-1 rounded-2xl p-[2px] bg-gradient-to-r from-red-500 via-pink-500 to-red-400">
-				<span class="rounded-2xl bg-white dark:bg-gray-900 p-1 flex items-center space-x-1">
+				<span class="rounded-2xl bg-white dark:bg-gray-900 p-1 pl-2 flex items-center space-x-1">
 				<HeartHandshake size={16} class="text-primary" />
 				<span class="text-sm text-muted-foreground">Open Source</span>
 				<a href="https://github.com/ThatPlatypus/SvelteTaag" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
