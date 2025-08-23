@@ -15,7 +15,8 @@
 			// Register service worker for PWA support
 			if ('serviceWorker' in navigator) {
 				window.addEventListener('load', () => {
-					navigator.serviceWorker.register('/service-worker.js')
+					const workerLocation = window.location.href.indexOf('github') > -1 ? '/SvelteTaag/service-worker.js' : 'service-worker.js';
+					navigator.serviceWorker.register(workerLocation)
 						.then(registration => {
 							console.log('ServiceWorker registration successful with scope: ', registration.scope);
 						})
