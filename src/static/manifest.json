@@ -2,7 +2,7 @@
   "name": "TAAG - Text to ASCII Art Generator",
   "short_name": "TAAG",
   "description": "A modern Text to ASCII Art Generator built with SvelteKit",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3b82f6",
